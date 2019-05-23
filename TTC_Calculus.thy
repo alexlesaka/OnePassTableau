@@ -151,7 +151,7 @@ fun disjNeg :: "PLTL_formula list \<Rightarrow> PLTL_formula"  where
 
 fun negCtxt :: "PLTL_formula list \<Rightarrow> PLTL_formula"  where
 "negCtxt [] = F" |
-"negCtxt \<Delta> = disjNeg (filter (\<lambda>phi. (isAlw phi)=False) \<Delta>)"
+"negCtxt \<Delta> = disjNeg (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Delta>)"
 
 (* Our infix version of ListMem *)
 
@@ -168,9 +168,8 @@ fun disj2set:: "PLTL_formula \<Rightarrow> PLTL_formula set" where
 
 fun conj2setOfsets :: "PLTL_formula \<Rightarrow> (PLTL_formula set) set" where
 (* phi is a conjunction of disjunctions (at least one) *)
-"conj2setOfsets (alpha .\<or> beta) = Set.insert (disj2set alpha) Set.empty" |
 "conj2setOfsets (alpha .\<and> beta) = (conj2setOfsets alpha) \<union> (conj2setOfsets beta)" |
-"conj2setOfsets beta =  Set.insert (Set.insert beta Set.empty) Set.empty"
+"conj2setOfsets beta =  (Set.insert (disj2set beta) Set.empty)"
 
 fun conjWithSubsumption :: "PLTL_formula \<Rightarrow> PLTL_formula \<Rightarrow>  PLTL_formula" (infix ".\<sqinter>." 85) where
 (* phi is a conjunction of disjunctions (at least one) and psi is a disjunction*)
