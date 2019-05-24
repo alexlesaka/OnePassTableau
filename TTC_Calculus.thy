@@ -18,7 +18,7 @@ datatype PLTL_formula =
 | Alw PLTL_formula ("(\<box> _)" [80] 80)
 | Evt PLTL_formula ("(\<diamond> _)" [80] 80)
 (* Selected Next and Until, Extra-logic connectives for marking *)
-| SelX PLTL_formula ("(\<dieresis>\<circle>\<dieresis> _)" [80] 80)
+| SelX PLTL_formula ("(\<dieresis>\<circle>\<dieresis> _)" [80] 80)              (* Marked Next *)
 | SelU PLTL_formula  PLTL_formula (infixr "\<dieresis>\<U>\<dieresis>" 72)  (* Selected Until *)
 
 (* Negation normal form *)
@@ -119,7 +119,7 @@ fun sort :: "PLTL_formula list \<Rightarrow> PLTL_formula list" where
 "sort [] = []" |
 "sort (h # t) = insert h (sort t)"
 
-(* Unnext function *)
+(*next_state function *)
 
 fun isX :: "PLTL_formula \<Rightarrow> bool" where 
 "isX (\<circle> _) = True" |
@@ -204,7 +204,7 @@ TTC_Evt_Plus : "phi \<bullet> \<Delta> \<turnstile> F   \<Longrightarrow>  (\<ci
 TTC_U_Plus : "psi \<bullet> \<Delta> \<turnstile> F  
           \<Longrightarrow>  phi \<bullet> (\<circle>((phi .\<sqinter>. (negCtxt \<Delta>)) \<dieresis>\<U>\<dieresis> psi)) \<bullet> \<Delta> \<turnstile> F  
           \<Longrightarrow> (phi \<U> psi) # \<Delta> \<turnstile> F"  |
-(* Unnext Rule *)
+(* Next_State Rule *)
 TTC_Next_State : "(next_state \<Delta>) \<turnstile> F \<Longrightarrow> \<Delta> \<turnstile> F" |
 
 (* Additional rules for automation*)

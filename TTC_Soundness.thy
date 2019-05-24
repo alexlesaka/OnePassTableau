@@ -60,7 +60,9 @@ definition unSat :: "PLTL_formula list \<Rightarrow> bool"
     lemma models_list [simp]:
       shows "\<sigma> \<TTurnstile> (\<psi>  \<bullet>  \<Delta>) = (\<sigma> \<Turnstile> \<psi> \<and> \<sigma> \<TTurnstile> \<Delta>)"
       using models_def by auto
- 
+
+(* We will prove (one-by-one) the soundness of each inference rule in the TTC_Calculus ****)
+
 (******************** TTC_Ctd1 soundness ***************)
 
 lemma TTC_Ctd1_Sound:
@@ -74,7 +76,6 @@ proof (rule ccontr)
   then show "False" using equiv_NNF by blast
 qed
 
-
 (******************** TTC_Ctd2 soundness ***************)
 
 lemma TTC_Ctd2_Sound:
@@ -84,7 +85,6 @@ proof -
   from assms have "\<forall>\<sigma>. F.\<in> \<Delta> \<and> \<not>(\<sigma> \<Turnstile> F)" by auto
   thus ?thesis using unfold_not_unSat by blast 
 qed
-
 
 (******************** TTC_T soundness *****************)
 
@@ -96,7 +96,6 @@ proof -
   then show ?thesis by (simp add: unSat_def)  
 qed
 
-
 (******************** TTC_And soundness ****************)
 
 lemma TTC_And_Sound:
@@ -107,7 +106,6 @@ proof (rule ccontr)
   then have "\<not>(unSat(\<phi> \<bullet> \<psi> \<bullet> \<Delta>))" by auto
   with assms show False by simp  
 qed
-
 
 (******************** TTC_Or soundness ****************)
 
@@ -150,7 +148,6 @@ proof (rule ccontr)
   then have "\<not>(unSat(\<phi> \<bullet> (\<circle>(\<box> \<phi>)) \<bullet> \<Delta>))" by (simp add: sat_def unSat_def)
   with assms show False by simp
 qed
-
 
 (******************** TTC_U soundness ****************)
 
@@ -239,127 +236,55 @@ proof (rule ccontr)
   with assms show False using sat_def unSat_def by blast
 qed
 
-
-(************ TTC_U_Plus_"Pure"_Sound **************)
-
-fun neg_all_context :: "PLTL_formula list \<Rightarrow> PLTL_formula"  where
-"neg_all_context [] = F" |
-"neg_all_context \<Delta> = disjNeg \<Delta>"
-
 (*
-fun disjNeg :: "PLTL_formula list \<Rightarrow> PLTL_formula"  where
-"disjNeg [] = F" |
-"disjNeg [h] = (\<sim>nnf h)" |
-"disjNeg (h#t) =  (disjNeg t) .\<or> (\<sim>nnf h)"
+In order to prove the soundness of the rule TTC_U_Plus, 
+we firstly prove the soundness of a similar rule that we call TTC_U_Plus_Pure
+(which is really the (\<U>)^+ rule introduced in the paper
+"Dual Systems of Tableaux and Sequents for PLTL" ), 
+TTC_U_Plus_Pure uses the negation of the full context i.e. it also adds the 
+negation of the always-formulas in the context, 
+whereas in the TTC_U_Plus these formulas are filtered out.
+Also, TTC_U_Plus uses subsumption in the negation of the context.
+After proving the soundness of TTC_U_Plus_Pure, we will extend the result to both 
+improvements: the filtering of always-formulas and the subsumption.
 *)
 
+(************ TTC_U_Plus_Pure_Sound **************)
+
+(******* Auxiliary lemmas ************)
 
 lemma disjNeg_l2r_Lemma:
   assumes "\<sigma> \<Turnstile> disjNeg \<Phi>"
-  shows " (\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>))"
+  shows "\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>"
 proof -
-  then show ?thesis sorry
+  from assms show ?thesis  by (induct \<Phi> rule: disjNeg.induct) (auto simp add: models_def)
 qed
 
+lemma disjNeg_r2l_Lemma:
+  assumes "\<phi> .\<in> \<Phi>"
+  assumes "\<sigma> \<Turnstile> \<sim>nnf \<phi>"
+  shows "\<sigma> \<Turnstile> disjNeg \<Phi>"
+proof -
+  from assms have "\<not>(\<sigma> \<Turnstile> \<phi>)" by simp
+  then have "\<not>(\<sigma> \<TTurnstile> \<Phi>)" using assms models_def by blast
+  then show ?thesis by (induct \<Phi> rule: disjNeg.induct)  (auto simp add: models_def)
+qed
 
-(*
 lemma disjNeg_Lemma:
-  shows "\<sigma> \<Turnstile> disjNeg \<Phi> \<longleftrightarrow> (\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>))"
-proof
-  have l2r: "\<sigma> \<Turnstile> disjNeg \<Phi> \<Longrightarrow> (\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>))" 
-  proof 
-    show "\<sigma> \<Turnstile> disjNeg \<Phi> \<Longrightarrow> \<Phi> \<noteq> []" by auto
-    show "\<sigma> \<Turnstile> disjNeg \<Phi> \<Longrightarrow> \<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>" sorry
-  qed
-  have r2l: "(\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>)) \<Longrightarrow> \<sigma> \<Turnstile> disjNeg \<Phi>" sorry
- 
-(*  then show ?thesis using l2r r2l by blast *)
-  oops
-*)
+  shows "(\<sigma> \<Turnstile> disjNeg \<Phi>) \<longleftrightarrow> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>)"
+  using disjNeg_l2r_Lemma disjNeg_r2l_Lemma by blast
 
-(*
-lemma neg_all_context_Lemma:
-  shows "(\<sigma> \<Turnstile> neg_all_context \<Phi>) = (\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<sigma> \<Turnstile> \<sim>nnf \<phi>))"
-proof -
-  then show ?thesis using disjNeg_Lemma 
-                     by (metis (full_types) holds.simps(1) inlist.elims(2) inlist.elims(3) 
-                                neg_all_context.simps(1) neg_all_context.simps(2))
-qed
-*)
-
-(*
-fun negCtxt :: "PLTL_formula list \<Rightarrow> PLTL_formula"  where
-"negCtxt [] = F" |
-"negCtxt \<Delta> = disjNeg (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Delta>)"
-*)
-
-(*
-lemma forever_Lemma:
-  assumes "\<sigma> \<TTurnstile> \<Phi>"
-  shows "\<forall>\<alpha>.((\<box>\<alpha>) .\<in> \<Phi> \<longrightarrow> (\<forall>k.((suffix \<sigma> k) \<Turnstile> (\<box>\<alpha>))))"
-proof -
-  then show ?thesis sorry
-qed
-
-lemma filterAlw_Lemma:
-  shows "\<phi> .\<in> (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Phi>) = (\<phi> .\<in> \<Phi> \<and> (\<forall>\<alpha>.(\<not>(\<phi> =(\<box>\<alpha>)))))"
-proof -
-  show ?thesis sorry
-qed
-
-lemma negCtxt_Lemma:
-  assumes "\<sigma> \<TTurnstile> \<Phi>"
-  assumes "i \<ge> 1"
-  assumes "(suffix \<sigma> i) \<Turnstile> (neg_all_context \<Phi>)"
-  shows "(suffix \<sigma> i) \<Turnstile> (negCtxt \<Phi>)"
-proof -
-  from assms(3) have "(\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> (suffix \<sigma> i) \<Turnstile> \<sim>nnf \<phi>))" 
-                     using neg_all_context_Lemma by simp
-  then have "\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<not>((suffix \<sigma> i) \<Turnstile> \<phi>))" by auto
-  then have P: "\<not>(\<Phi> = []) \<and> (\<exists>\<phi>.(\<phi> .\<in> \<Phi> \<and> \<not>((suffix \<sigma> i) \<Turnstile> \<phi>) \<and> (\<forall>\<alpha>.(\<not>(\<phi> =(\<box>\<alpha>))))))"
-             using assms(1) forever_Lemma by blast
-  then have "\<not>(\<Phi> = []) \<and> (\<exists>\<phi>.(\<phi> .\<in> (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Phi>) \<and> \<not>((suffix \<sigma> i) \<Turnstile> \<phi>)))"
-    using filterAlw_Lemma by blast
-  then show ?thesis by (metis disjNeg_Lemma equiv_NNF inlist.simps(1) negCtxt.elims) 
-qed
-
-lemma reduced_Ctxt_Lemma: 
-  assumes "\<sigma> \<TTurnstile> \<Phi>" 
-  assumes "\<sigma> \<Turnstile> \<circle>((\<phi> .\<and> (neg_all_context \<Phi>)) \<U> \<psi>)"
-  shows "\<sigma> \<Turnstile> \<circle>((\<phi> .\<and> (negCtxt \<Phi>)) \<U> \<psi>)"
-proof(cases)
-  assume "\<sigma> \<Turnstile> \<circle>\<psi>"
-  then show ?thesis by auto
-next
-  assume "\<not>(\<sigma> \<Turnstile> \<circle>\<psi>)"
-  define \<sigma>' where "\<sigma>' = (suffix \<sigma> 1)"
-  from assms have P: "\<exists>k.(k\<ge> 1 \<and> (suffix \<sigma>' k) \<Turnstile>  \<psi> 
-                       \<and> (\<forall>j<k.((suffix \<sigma>' j) \<Turnstile> (\<phi> .\<and> (neg_all_context \<Phi>)))))" 
-                  using  \<open>\<not>(\<sigma> \<Turnstile> \<circle>\<psi>)\<close> \<sigma>'_def
-                  by (metis (no_types, lifting) One_nat_def holds.simps(11) holds.simps(9) 
-                            le_simps(3) neq0_conv suffix0)
-  then obtain k where  Q: "k\<ge> 1 \<and> (suffix \<sigma>' k) \<Turnstile>  \<psi> 
-                       \<and> (\<forall>j<k.((suffix \<sigma>' j) \<Turnstile> (\<phi> .\<and> (negCtxt \<Phi>))))"
-                        using assms(1) \<sigma>'_def P negCtxt_Lemma 
-                        by (metis One_nat_def Suc_leI holds.simps(5) plus_nat.simps(2) 
-                                  suffix_add zero_less_Suc)
-  then have R: "\<sigma>' \<Turnstile> (\<phi> .\<and> (negCtxt \<Phi>)) \<U> \<psi>" using Q holds.simps(11) by blast
-  then show  "\<sigma> \<Turnstile> \<circle>((\<phi> .\<and> (negCtxt \<Phi>)) \<U> \<psi>)" using \<sigma>'_def by auto
-qed
-*)
-
-
-(* 
 lemma all_context_Lemma:
   assumes "\<not>(\<sigma> \<TTurnstile> \<Delta>)" 
-  shows "\<sigma> \<Turnstile> (neg_all_context \<Delta>)"
-  using assms models_def disjNeg_lemma equiv_NNF  
-  by (metis inlist.simps(1) neg_all_context.elims) 
+  shows "\<sigma> \<Turnstile> (disjNeg \<Delta>)"
+  using assms models_def disjNeg_Lemma equiv_NNF  by auto
+
+(************* soundness of TTC_U_Plus_Pure *****************)
 
 lemma TTC_U_Plus_Pure_Sound:
   assumes "sat((\<phi> \<U> \<psi>) # \<Delta>)"
   shows "sat(\<psi> \<bullet>  \<Delta>) \<or>
-         sat(\<phi> \<bullet> (\<circle>((\<phi> .\<and> neg_all_context(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>)"
+         sat(\<phi> \<bullet> (\<circle>((\<phi> .\<and> disjNeg(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>)"
 proof -
   from assms have "\<exists>\<sigma>.( \<exists>i.(suffix \<sigma> i  \<Turnstile> \<psi> \<and> (\<forall>j<i. suffix \<sigma> j  \<Turnstile> \<phi>))
                         \<and> \<sigma> \<TTurnstile> \<Delta> )"
@@ -392,12 +317,13 @@ proof -
                assume "\<not>(h = k)"
                then have "h < k" using Pkh by auto
                then have "\<forall>j. ( (h < j \<and> j < k) \<longrightarrow> (\<not>(suffix \<sigma> j \<TTurnstile> \<Delta>)))" using  PhGreatest by auto
-               then have Pcontext: "\<forall>j.( (h < j \<and> j < k) \<longrightarrow> (suffix \<sigma> j \<Turnstile> (neg_all_context \<Delta>)))" 
+               then have Pcontext: "\<forall>j.( (h < j \<and> j < k) \<longrightarrow> (suffix \<sigma> j \<Turnstile> (disjNeg \<Delta>)))" 
                          using all_context_Lemma by auto
-               then have Pphicontext: "\<forall>j. ((h < j \<and> j < k) \<longrightarrow> (suffix \<sigma> j) \<Turnstile> (\<phi> .\<and> neg_all_context(\<Delta>)))"
-                                      using Pi Pk Pcontext by (metis Suc_lessI holds.simps(5) less_trans not_less_eq)
+               then have Pphicontext: "\<forall>j. ((h < j \<and> j < k) \<longrightarrow> (suffix \<sigma> j) \<Turnstile> (\<phi> .\<and> disjNeg(\<Delta>)))"
+                         using Pi Pk Pcontext 
+                         by (metis Suc_lessI holds.simps(5) less_trans not_less_eq)
                then have Puntil: "(suffix \<sigma> k) \<Turnstile> \<psi> \<and> 
-                                  (\<forall>j.( (h < j \<and> j < k) \<longrightarrow> (suffix \<sigma> j) \<Turnstile> (\<phi> .\<and> neg_all_context(\<Delta>))))"
+                                  (\<forall>j.( (h < j \<and> j < k) \<longrightarrow> (suffix \<sigma> j) \<Turnstile> (\<phi> .\<and> disjNeg(\<Delta>))))"
                                    using Pphicontext calculation by blast       
                define \<sigma>':: "Structure" where "\<sigma>' = (suffix \<sigma> h)"
                define \<sigma>'':: "Structure" where "\<sigma>'' = (suffix \<sigma> (h+1))"
@@ -408,19 +334,268 @@ proof -
                                      diff_add_inverse2  gr0_conv_Suc less_diff_conv 
                                      plus_nat.simps(2) suffix_add  zero_less_diff)
                 then have Psigma'': "(\<exists>i.(i = k-(h+1) \<and> suffix \<sigma>'' i  \<Turnstile> \<psi> \<and> 
-                                    (\<forall>j<i. ((suffix \<sigma>'' j)  \<Turnstile> (\<phi> .\<and> neg_all_context(\<Delta>))))))"
+                                    (\<forall>j<i. ((suffix \<sigma>'' j)  \<Turnstile> (\<phi> .\<and> disjNeg(\<Delta>))))))"
                             using calculation Puntil by auto
                 then have  "\<sigma>'' = (suffix \<sigma>' 1)" by (simp add: \<sigma>''_def \<sigma>'_def)
-                then have  "\<sigma>' \<Turnstile> (\<circle>((\<phi> .\<and> neg_all_context(\<Delta>)) \<U> \<psi>))"
+                then have  "\<sigma>' \<Turnstile> (\<circle>((\<phi> .\<and> disjNeg(\<Delta>)) \<U> \<psi>))"
                            using Psigma'' holds.simps(11) holds.simps(9) by blast
-                then have  "\<sigma>' \<Turnstile> \<phi> \<and> \<sigma>' \<Turnstile> (\<circle>((\<phi> .\<and> neg_all_context(\<Delta>)) \<U> \<psi>)) \<and>
+                then have  "\<sigma>' \<Turnstile> \<phi> \<and> \<sigma>' \<Turnstile> (\<circle>((\<phi> .\<and> disjNeg(\<Delta>)) \<U> \<psi>)) \<and>
                                    \<sigma>' \<TTurnstile> \<Delta>" 
                             by (metis Pi Pk Pkh Suc_lessI \<open>h < k\<close> \<sigma>'_def less_trans not_less_eq)
-               then have "\<sigma>' \<TTurnstile> \<phi> \<bullet> (\<circle>((\<phi> .\<and> neg_all_context(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>" by simp
+               then have "\<sigma>' \<TTurnstile> \<phi> \<bullet> (\<circle>((\<phi> .\<and> disjNeg(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>" by simp
                then show ?thesis  using sat_def by blast
              qed
              then show ?thesis by simp
            qed
            then show ?thesis by simp
          qed
-*)
+
+(********************   TTC_U_Plus_Sound    **********************)
+
+(*********** Auxiliary lemmas for the filtering out of always-formulas *************)
+
+lemma forever_Lemma:
+  assumes "\<sigma> \<TTurnstile> \<Phi>"
+  shows "\<forall>\<alpha>.((\<box>\<alpha>) .\<in> \<Phi> \<longrightarrow> (\<forall>k.((suffix \<sigma> k) \<Turnstile> (\<box>\<alpha>))))"
+  using assms models_def by auto
+
+lemma member_of_list_Lemma :
+  shows "(\<phi> .\<in> \<Delta>) = (\<phi> \<in> set \<Delta>)"
+  by (induct \<Delta>) auto
+
+lemma filterAlw_l2r_Lemma:
+  shows "\<phi> .\<in> (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Phi>) \<longrightarrow> (\<phi> .\<in> \<Phi> \<and> (\<forall>\<alpha>.(\<not>(\<phi> = \<box>\<alpha>))))"
+proof(induct \<Phi>)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a \<Phi>)   
+  have "\<phi> .\<in> (filter (\<lambda>phi.(\<not>(isAlw phi))) (Cons a \<Phi>)) \<longrightarrow>
+                       \<phi> .\<in>  \<Phi> \<or> (\<phi> = a \<or>  (\<lambda>phi.(\<not>(isAlw phi))) \<phi>)" 
+               by (metis Cons.hyps filter.simps(2) inlist.simps(2))
+    then show ?case using Cons.hyps by auto
+  qed 
+
+lemma filterAlw_r2l_Lemma:
+  assumes "\<phi> .\<in> \<Phi>"
+  assumes "\<forall>\<alpha>.(\<not>(\<phi> = \<box>\<alpha>))"
+  shows "\<phi> .\<in> (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Phi>)"
+proof -
+  have Pfilter: "(\<phi> \<in> set (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Phi>)) 
+                  \<longleftrightarrow> (\<phi> \<in> (set \<Phi>)  \<and> ((\<lambda>phi.(\<not>(isAlw phi))) \<phi>))" by simp
+  from assms have "((\<lambda>phi.(\<not>(isAlw phi))) \<phi>) = True" using isAlw.elims(2) by auto
+  then show ?thesis using member_of_list_Lemma  assms(1) by auto
+qed
+
+lemma filterAlw_Lemma:
+  shows "\<phi> .\<in> (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Phi>) \<longleftrightarrow> (\<phi> .\<in> \<Phi> \<and> (\<forall>\<alpha>.(\<not>(\<phi> = \<box>\<alpha>))))"
+  using filterAlw_l2r_Lemma filterAlw_r2l_Lemma by blast
+
+lemma negCtxt_Lemma:
+  assumes "\<sigma> \<TTurnstile> \<Phi>"
+  assumes "i \<ge> 1"
+  assumes "(suffix \<sigma> i) \<Turnstile> (disjNeg \<Phi>)"
+  shows "(suffix \<sigma> i) \<Turnstile> (negCtxt \<Phi>)"
+proof -
+  from assms(3) have "(\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> (suffix \<sigma> i) \<Turnstile> \<sim>nnf \<phi>)" 
+                     using disjNeg_Lemma by simp
+  then have "\<not>(\<Phi> = []) \<and> (\<exists>\<phi>. \<phi> .\<in> \<Phi> \<and> \<not>((suffix \<sigma> i) \<Turnstile> \<phi>))" by auto
+  then have P: "\<not>(\<Phi> = []) \<and> (\<exists>\<phi>.(\<phi> .\<in> \<Phi> \<and> \<not>((suffix \<sigma> i) \<Turnstile> \<phi>) \<and> (\<forall>\<alpha>.(\<not>(\<phi> =(\<box>\<alpha>))))))"
+             using assms(1) forever_Lemma by blast
+  then have "\<not>(\<Phi> = []) \<and> (\<exists>\<phi>.(\<phi> .\<in> (filter (\<lambda>phi.(\<not>(isAlw phi))) \<Phi>) \<and> \<not>((suffix \<sigma> i) \<Turnstile> \<phi>)))"
+    using filterAlw_Lemma by blast
+  then show ?thesis by (metis disjNeg_Lemma equiv_NNF negCtxt.elims) 
+qed
+
+lemma reduced_Ctxt_Lemma: 
+  assumes "\<sigma> \<TTurnstile> \<Phi>" 
+  assumes "\<sigma> \<Turnstile> \<circle>((\<phi> .\<and> (disjNeg \<Phi>)) \<U> \<psi>)"
+  shows "\<sigma> \<Turnstile> \<circle>((\<phi> .\<and> (negCtxt \<Phi>)) \<U> \<psi>)"
+proof(cases)
+  assume "\<sigma> \<Turnstile> \<circle>\<psi>"
+  then show ?thesis by auto
+next
+  assume "\<not>(\<sigma> \<Turnstile> \<circle>\<psi>)"
+  define \<sigma>' where "\<sigma>' = (suffix \<sigma> 1)"
+  from assms have P: "\<exists>k.(k\<ge> 1 \<and> (suffix \<sigma>' k) \<Turnstile>  \<psi> 
+                       \<and> (\<forall>j<k.((suffix \<sigma>' j) \<Turnstile> (\<phi> .\<and> (disjNeg \<Phi>)))))" 
+                  using  \<open>\<not>(\<sigma> \<Turnstile> \<circle>\<psi>)\<close> \<sigma>'_def
+                  by (metis (no_types, lifting) One_nat_def holds.simps(11) holds.simps(9) 
+                            le_simps(3) neq0_conv suffix0)
+  then obtain k where  Q: "k\<ge> 1 \<and> (suffix \<sigma>' k) \<Turnstile>  \<psi> 
+                       \<and> (\<forall>j<k.((suffix \<sigma>' j) \<Turnstile> (\<phi> .\<and> (negCtxt \<Phi>))))"
+                        using assms(1) \<sigma>'_def P negCtxt_Lemma 
+                        by (metis One_nat_def Suc_leI holds.simps(5) plus_nat.simps(2) 
+                                  suffix_add zero_less_Suc)
+  then have R: "\<sigma>' \<Turnstile> (\<phi> .\<and> (negCtxt \<Phi>)) \<U> \<psi>" using Q holds.simps(11) by blast
+  then show  "\<sigma> \<Turnstile> \<circle>((\<phi> .\<and> (negCtxt \<Phi>)) \<U> \<psi>)" using \<sigma>'_def by auto
+qed
+
+(*********** auxiliary lemmas for the  .\<sqinter>. ***************)
+
+lemma disj2set_Lemma:
+  shows "\<sigma> \<Turnstile> \<phi> \<longleftrightarrow> (\<exists>\<gamma>. \<gamma> \<in> (disj2set \<phi>) \<and> \<sigma> \<Turnstile> \<gamma>)" 
+  by (induct \<phi>) auto
+ 
+lemma conj2setOfsets_Lemma:
+  shows "\<sigma> \<Turnstile> \<phi> \<longleftrightarrow> (\<forall>\<Lambda>. \<Lambda> \<in> (conj2setOfsets \<phi>) \<longrightarrow> (\<exists>\<delta>. \<delta> \<in> \<Lambda> \<and> \<sigma> \<Turnstile> \<delta>))"
+proof (induct \<phi>)
+  case F
+  then have "conj2setOfsets F =  (Set.insert (disj2set F) Set.empty)" by simp
+  then show ?case by (metis disj2set.simps(2) insertI1 singletonD)
+next
+  case T
+  then show ?case
+    by (metis conj2setOfsets.simps(3) disj2set.simps(3) singletonD singletonI)
+next
+  case (Var x)
+  then show ?case
+    by (metis conj2setOfsets.simps(4) disj2set.simps(4) insertI1 singletonD)
+next
+  case (Not \<phi>)
+  then show ?case
+    by (metis conj2setOfsets.simps(5) disj2set.simps(5) insertI1 singletonD)
+next
+  case (And \<phi>1 \<phi>2)
+  then show ?case
+    by (metis (full_types) Un_iff conj2setOfsets.simps(1) holds.simps(5))
+next
+  case (Or \<phi>1 \<phi>2)
+  then show ?case
+    by (metis conj2setOfsets.simps(6) disj2set_Lemma insertI1 singletonD)
+next
+  case (Imp \<phi>1 \<phi>2)
+  then show ?case
+    by (metis conj2setOfsets.simps(7) disj2set.simps(7) singletonD singletonI)
+next
+  case (X \<phi>)
+  then show ?case
+    by (metis conj2setOfsets.simps(8) disj2set.simps(8) insertI1 singletonD)
+next
+  case (U \<phi>1 \<phi>2)
+  then show ?case
+    by (metis conj2setOfsets.simps(9) disj2set.simps(9) insertI1 singletonD)
+next
+  case (R \<phi>1 \<phi>2)
+  then show ?case using conj2setOfsets.simps(10) singletonD
+    by (metis disj2set.simps(10) singletonI)
+next
+  case (Alw \<phi>)
+  then show ?case using conj2setOfsets.simps(11)
+    by (metis disj2set.simps(11) singletonD singletonI)
+next
+  case (Evt \<phi>)
+  then show ?case using conj2setOfsets.simps(12)
+    by (metis disj2set.simps(12) insertI1 singletonD)
+next
+  case (SelX \<phi>)
+  then show ?case using conj2setOfsets.simps(13)
+    by (metis disj2set.simps(13) singletonD singletonI)
+next
+  case (SelU \<phi>1 \<phi>2)
+  then show ?case  using conj2setOfsets.simps(14)
+    by (metis disj2set.simps(14) insertI1 singletonD)
+qed
+
+
+lemma inclusion_Lemma:
+  assumes  "\<sigma> \<Turnstile> \<phi>"
+  assumes  "\<Lambda> \<in> (conj2setOfsets \<phi>)"
+  assumes "\<Lambda> \<le> (disj2set \<psi>)" 
+  shows  "\<sigma> \<Turnstile> \<psi>"
+proof -
+  show ?thesis using assms conj2setOfsets_Lemma disj2set_Lemma by blast
+qed
+
+lemma subsumption_Lemma:
+  assumes "(Bex (conj2setOfsets \<phi>) (\<lambda>S. S \<le> (disj2set \<psi>)))"
+  assumes "\<sigma> \<Turnstile> \<phi>"
+  shows  "\<sigma> \<Turnstile> \<phi> .\<and> \<psi>"
+proof -
+  from assms(1) have "\<exists>\<Lambda>.((\<Lambda> \<in> (conj2setOfsets \<phi>)) \<and>  (\<Lambda> \<le> (disj2set \<psi>)))" by auto
+  then show ?thesis using inclusion_Lemma using assms(2) holds.simps(5) by blast
+qed
+
+lemma conjWSmp_Lemma:
+  shows "\<sigma> \<Turnstile> \<phi> .\<and> \<psi> = \<sigma> \<Turnstile> \<phi> .\<sqinter>. \<psi>"
+proof(cases "(Bex (conj2setOfsets \<phi>) (\<lambda>S. S \<le> (disj2set \<psi>)))")
+  case True
+  have "\<sigma> \<Turnstile> \<phi> .\<and> \<psi> \<longrightarrow> \<sigma> \<Turnstile> \<phi>" by auto
+  then have "\<sigma> \<Turnstile> \<phi> .\<and> \<psi> = \<sigma> \<Turnstile> \<phi>" using subsumption_Lemma using True by blast
+  then show ?thesis by simp
+next
+  case False
+  then show ?thesis by simp
+qed
+
+(************* Soundness of TTC_U_Plus *************)
+
+lemma TTC_U_Plus_Sound:
+  assumes "unSat(\<psi> \<bullet>  \<Delta>)"
+  assumes "unSat(\<phi> \<bullet> (\<circle>((\<phi> .\<sqinter>. negCtxt(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>)"  
+  shows "unSat((\<phi> \<U> \<psi>) # \<Delta>)"
+proof -
+  have "sat(\<phi> \<bullet> (\<circle>((\<phi> .\<sqinter>. negCtxt(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>)  = sat(\<phi> \<bullet> (\<circle>((\<phi> .\<and> negCtxt(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>)"
+    using conjWSmp_Lemma models_list sat_def by auto
+  thus ?thesis 
+  using reduced_Ctxt_Lemma TTC_U_Plus_Pure_Sound assms models_list sat_def unSat_def
+  by (metis (no_types, lifting))
+qed
+
+(************* TTC_Next_State_Sound *************)
+
+lemma TTC_Next_State_Sound:
+  assumes "unSat(next_state \<Delta>)"
+  shows "unSat(\<Delta>)"
+proof (rule ccontr)
+  assume "\<not>unSat(\<Delta>)"  
+  then have "\<exists>\<sigma>.(\<sigma> \<TTurnstile> \<Delta>)" by (simp add: sat_def unSat_def)
+  then obtain \<sigma> where  "\<sigma> \<TTurnstile> \<Delta>" by auto
+  define \<sigma>' where "\<sigma>'= suffix  \<sigma> 1"
+  then have "\<forall>\<phi>.((\<circle>\<phi>).\<in> \<Delta> \<or> (\<dieresis>\<circle>\<dieresis>\<phi>).\<in> \<Delta>) \<longrightarrow> (\<sigma>' \<Turnstile> \<phi>)" using \<open>\<sigma> \<TTurnstile> \<Delta>\<close> models_def by auto
+  then have  "\<forall>\<phi>.(\<phi> .\<in>  map removeX (filter isX \<Delta>)) \<longrightarrow> (\<sigma>' \<Turnstile> \<phi>)" 
+    by (smt filter_set imageE isX.elims(2) member_filter member_of_list_Lemma 
+            removeX.simps(1) removeX.simps(2) set_map) 
+  then have "\<sigma>' \<TTurnstile> (next_state \<Delta>)"  by (simp add: models_def)
+  then show "False" using assms sat_def unSat_def by blast
+qed
+
+
+(*****  Soundness of the additional rules for automation *********)
+
+(******************  TTC_Interchange_Sound ***********************)
+
+lemma  TTC_Interchange_Sound:
+  shows "sat(sort \<Delta>) = sat(\<Delta>)"
+proof - 
+  have Psort: "\<forall>\<sigma>.(\<sigma> \<TTurnstile> sort \<Delta> = \<sigma> \<TTurnstile> \<Delta>)"
+proof (induct \<Delta>)
+  case Nil
+  then show ?case by auto
+next
+  case (Cons a \<Delta>)
+  have  "\<sigma> \<TTurnstile> (insert \<psi> \<Delta>) = (\<sigma> \<Turnstile> \<psi> \<and> \<sigma> \<TTurnstile> \<Delta>)" by simp  
+  then show ?case using  models_def Cons.hyps by auto
+qed
+have "sat(sort \<Delta>) = sat (\<Delta>)" using Psort unSat_def sat_def models_def by simp
+then show ?thesis by auto
+qed
+
+(************************  TTC_U_Sel_Sound ***********************)
+
+lemma TTC_U_Sel_Sound:
+  assumes "unSat(\<psi> \<bullet>  \<Delta>)"
+  assumes "unSat(\<phi> \<bullet> (\<circle>((\<phi> .\<sqinter>. negCtxt(\<Delta>)) \<U> \<psi>)) \<bullet> \<Delta>)"  
+  shows "unSat((\<phi> \<dieresis>\<U>\<dieresis> \<psi>) # \<Delta>)"
+proof -
+  have "\<forall>\<sigma>.(\<sigma> \<Turnstile> \<phi> \<dieresis>\<U>\<dieresis> \<psi> = \<sigma> \<Turnstile> \<phi> \<U> \<psi>)" by auto
+  then have  "unSat((\<phi> \<dieresis>\<U>\<dieresis> \<psi>) # \<Delta>) =  unSat((\<phi> \<U> \<psi>) # \<Delta>)" 
+       using unSat_def sat_def models_def by (metis inlist.simps(2) )
+     thus ?thesis using unSat_def TTC_U_Plus_Sound assms by blast
+   qed
+
+(**********  TTC_U_Mark_Next and TTC_UnMark_Next are both sound ************)
+
+lemma TTC_Mark_Next_and_TTC_Unmark_Next_Sound:
+  shows "sat((\<dieresis>\<circle>\<dieresis> phi) \<bullet> \<Delta>) = sat((\<circle> phi) \<bullet> \<Delta>)"
+by (simp add: sat_def)

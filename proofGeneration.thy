@@ -23,7 +23,7 @@ proving (uncommenting) the following lemma *)
 
 (*
 lemma runningExample_bigStep_proof_generation: "S @ [\<circle>(\<diamond>(V ''a''))] \<turnstile> F" 
-(* Generates a file Proof.txt, with the big-step proof: *)
+(* Generates a file Proof.txt, with the big-step proof *)
   apply solver_print_Big_Step
   done
 *)
